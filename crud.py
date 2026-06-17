@@ -692,11 +692,22 @@ def generate_participant_report(db: Session, participant_id: int):
         for sub_aspect in sorted(aspect.sub_aspects, key=lambda x: x.name):
             sub_aspect_report = {"name": sub_aspect.name, "category": "N/A"}
             
+            # Cari test_id yang di-mapping ke sub_aspect ini via template paket
+            template = participant.package.psychogram_template if participant.package else None
+            mapped_test_id = None
+            if template:
+                for assoc in template.test_associations:
+                    if assoc.sub_aspect_id == sub_aspect.id:
+                        mapped_test_id = assoc.test_id
+                        break
+                        
             # Cari sesi tes yang sesuai
-            session = next(
-                (s for s in participant.sessions if s.test_id == sub_aspect.test_id and s.status == 'completed'),
-                None
-            )
+            session = None
+            if mapped_test_id:
+                session = next(
+                    (s for s in participant.sessions if s.test_id == mapped_test_id and s.status == 'completed'),
+                    None
+                )
             
             if session and session.score is not None:
                 total_score_sum += session.score
@@ -704,7 +715,7 @@ def generate_participant_report(db: Session, participant_id: int):
                 
                 # Ambil kategori (R, K, C, B, T) dari interpretation_rules
                 rule = db.query(models.InterpretationRule).filter(
-                    models.InterpretationRule.test_id == sub_aspect.test_id,
+                    models.InterpretationRule.test_id == mapped_test_id,
                     models.InterpretationRule.min_score <= session.score,
                     models.InterpretationRule.max_score >= session.score
                 ).first()
