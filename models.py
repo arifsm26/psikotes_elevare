@@ -132,6 +132,7 @@ class AnswerOption(Base):
     question_id = Column(Integer, ForeignKey("questions.id"))
     text = Column(String(255), nullable=False)
     score = Column(Integer, default=0)
+    category = Column(String(50), nullable=True) # Tambahan untuk DISC (D/I/S/C/*)
     is_correct = Column(Boolean, default=False, server_default='0', nullable=False)
     image_url = Column(String(255), nullable=True)
     question = relationship("Question", back_populates="options")

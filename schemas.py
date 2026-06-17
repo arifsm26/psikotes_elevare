@@ -153,6 +153,7 @@ class AnswerOptionDetail(BaseModel):
     id: int
     text: str
     score: int
+    category: Optional[str] = None
     is_correct: bool
     image_url : Optional[str] = None
     class Config: from_attributes = True
@@ -291,6 +292,7 @@ class ReportUpdateRequest(BaseModel):
 # --- Manajemen Pertanyaan ---
 class AnswerOptionCreate(BaseModel):
     text: str; score: int = 0
+    category: Optional[str] = None
     is_correct: bool = False
     image_url: Optional[str] = None
 

@@ -136,7 +136,7 @@ def save_participant_answers(db: Session, participant_id: int, submission: schem
 
     # Simpan jawaban
     for answer in submission.answers:
-        if answer.answer_text is not None:
+        if answer.answer_text is not None and not answer.selected_option_ids:
             # Jawaban essay
             db_answer = models.ParticipantAnswer(
                 participant_id=participant_id,
@@ -145,12 +145,22 @@ def save_participant_answers(db: Session, participant_id: int, submission: schem
             )
             db.add(db_answer)
         else:
-            # Jawaban pilihan ganda
-            for option_id in answer.selected_option_ids:
+            # Cek tipe soal
+            question = db.query(models.Question).filter(models.Question.id == answer.question_id).first()
+            is_disc = question and question.question_type == 'disc'
+
+            # Jawaban pilihan ganda / disc
+            for idx, option_id in enumerate(answer.selected_option_ids):
+                # Untuk DISC, simpan status Most/Least di answer_text berdasarkan urutan
+                disc_text = None
+                if is_disc:
+                    disc_text = "most" if idx == 0 else "least"
+                    
                 db_answer = models.ParticipantAnswer(
                     participant_id=participant_id,
                     question_id=answer.question_id,
-                    selected_option_id=option_id
+                    selected_option_id=option_id,
+                    answer_text=disc_text
                 )
                 db.add(db_answer)
 
