@@ -689,7 +689,7 @@ def generate_participant_report(db: Session, participant_id: int):
     for aspect in all_aspects:
         aspect_report = {"name": aspect.name, "sub_aspects": []}
         
-        for sub_aspect in sorted(aspect.sub_aspects, key=lambda x: x.order):
+        for sub_aspect in sorted(aspect.sub_aspects, key=lambda x: x.name):
             sub_aspect_report = {"name": sub_aspect.name, "category": "N/A"}
             
             # Cari sesi tes yang sesuai
