@@ -1,0 +1,273 @@
+# backend/crud.py
+
+# --- IMpor diletakkan di bagian atas ---
+from sqlalchemy.orm import Session
+from datetime import datetime
+import uuid
+
+import models
+import schemas
+
+# --- Fungsi-fungsi Pembantu ---
+
+def get_package_by_code(db: Session, access_code: str):
+    """Mencari TestPackage berdasarkan access_code yang aktif."""
+    return db.query(models.TestPackage).filter(
+        models.TestPackage.access_code == access_code,
+        models.TestPackage.is_active == True
+    ).first()
+
+def get_participant_by_token(db: Session, token: str):
+    """Mencari Participant berdasarkan session_token."""
+    return db.query(models.Participant).filter(models.Participant.session_token == token).first()
+
+def get_participant_by_test_number(db: Session, test_package_id: int, test_number: str):
+    """Mencari Participant berdasarkan test_number dalam satu paket tes."""
+    return db.query(models.Participant).filter(
+        models.Participant.test_package_id == test_package_id,
+        models.Participant.test_number == test_number
+    ).first()
+
+def get_test_preview_data(db: Session, test_id: int):
+    """Mengambil detail tes dan contoh soal untuk halaman preview."""
+    test_details = db.query(models.Test).filter(models.Test.id == test_id).first()
+    if not test_details:
+        return None
+    
+    example_question = db.query(models.Question).filter(
+        models.Question.test_id == test_id,
+        models.Question.is_example == True
+    ).first()
+    
+    return {
+        "test": test_details,
+        "example_question": example_question
+    }
+
+def get_questions_for_test(db: Session, test_id: int):
+    """Mengambil semua pertanyaan untuk sebuah tes (kecuali contoh soal)."""
+    return db.query(models.Question).filter(
+        models.Question.test_id == test_id,
+        models.Question.is_example == False
+    ).order_by(models.Question.order).all()
+
+def get_session_status(db: Session, participant_id: int):
+    """Mengambil status semua sesi tes milik seorang peserta."""
+    return db.query(models.TestSession).filter(models.TestSession.participant_id == participant_id).all()
+
+# --- Fungsi Logika Utama ---
+
+def create_participant_session(db: Session, request: schemas.SessionCreateRequest):
+    """Membuat record Participant dan TestSession baru."""
+    # 1. Validasi access_code
+    db_package = get_package_by_code(db, access_code=request.access_code)
+    if not db_package:
+        return {"error": "package_not_found"}
+
+    # 2. Validasi test_number agar tidak duplikat
+    existing_participant = get_participant_by_test_number(
+        db, test_package_id=db_package.id, test_number=request.test_number
+    )
+    if existing_participant:
+        return {"error": "test_number_exists"}
+    
+    # 3. Buat record Participant baru
+    session_token = str(uuid.uuid4())
+    db_participant = models.Participant(
+        name=request.name,
+        test_number=request.test_number,
+        age=request.age,
+        test_package_id=db_package.id, # Langsung set ID
+        session_token=session_token
+    )
+    db.add(db_participant)
+    db.commit()
+    db.refresh(db_participant)
+
+    # 4. Buat record TestSession untuk setiap tes di dalam paket
+    for test in db_package.tests:
+        db_test_session = models.TestSession(
+            participant_id=db_participant.id,
+            test_id=test.id,
+            status='not_started'
+        )
+        db.add(db_test_session)
+    
+    db.commit()
+
+    return {"participant": db_participant}
+
+def save_participant_answers(db: Session, participant_id: int, submission: schemas.TestSubmissionRequest):
+    total_score = 0
+    
+    for answer in submission.answers:
+        # Buat record jawaban
+        db_answer = models.ParticipantAnswer(
+            participant_id=participant_id,
+            question_id=answer.question_id,
+            selected_option_id=answer.selected_option_id, # Akan None jika essay
+            answer_text=answer.answer_text # Akan None jika pilihan ganda
+        )
+        db.add(db_answer)
+        
+        # Hitung skor hanya untuk jawaban pilihan ganda
+        if answer.selected_option_id:
+            option = db.query(models.AnswerOption).filter(models.AnswerOption.id == answer.selected_option_id).first()
+            if option and option.score:
+                total_score += option.score
+
+    # 2. Update status dan skor TestSession
+    db.query(models.TestSession).filter(
+        models.TestSession.participant_id == participant_id,
+        models.TestSession.test_id == submission.test_id
+    ).update({"status": "completed", "score": total_score})
+
+    db.commit()
+    
+    return total_score
+
+def start_test_session(db: Session, participant_id: int, test_id: int):
+    """Memulai sebuah sesi tes, mencatat waktu mulai."""
+    test_session = db.query(models.TestSession).filter(
+        models.TestSession.participant_id == participant_id,
+        models.TestSession.test_id == test_id
+    ).first()
+
+    if test_session and test_session.status == 'not_started':
+        test_session.status = 'in_progress'
+        test_session.start_time = datetime.utcnow()
+        db.commit()
+        db.refresh(test_session)
+        return test_session
+    
+    elif test_session and test_session.status == 'in_progress':
+        return test_session
+            
+    return None
+
+
+# ...
+def get_admin_by_email(db: Session, email: str):
+    return db.query(models.AdminUser).filter(models.AdminUser.email == email).first()
+
+
+def get_test_packages(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.TestPackage).offset(skip).limit(limit).all()
+
+def create_test_package(db: Session, package: schemas.TestPackageCreate):
+    db_package = models.TestPackage(
+        name=package.name,
+        access_code=package.access_code,
+        is_active=package.is_active
+    )
+    db.add(db_package)
+    db.commit()
+    db.refresh(db_package)
+    return db_package
+
+
+def get_test_package_by_id(db: Session, package_id: int):
+    return db.query(models.TestPackage).filter(models.TestPackage.id == package_id).first()
+
+
+def get_all_master_tests(db: Session):
+    return db.query(models.Test).all()
+
+def add_test_to_package(db: Session, package_id: int, test_id: int):
+    db_package = get_test_package_by_id(db, package_id=package_id)
+    if not db_package:
+        return None # Paket tidak ditemukan
+
+    test_to_add = db.query(models.Test).filter(models.Test.id == test_id).first()
+    if not test_to_add:
+        return None # Tes tidak ditemukan
+
+    # Tambahkan tes ke dalam relasi
+    db_package.tests.append(test_to_add)
+    db.commit()
+    return db_package
+
+
+def create_question_for_test(db: Session, test_id: int, question: schemas.QuestionCreate):
+    db_question = models.Question(
+        test_id=test_id,
+        text=question.text,
+        order=question.order,
+        is_example=question.is_example,
+        image_url=question.image_url
+        
+
+
+    )
+    db.add(db_question)
+    db.commit()
+    db.refresh(db_question)
+
+    for option_in in question.options:
+        db_option = models.AnswerOption(
+            question_id=db_question.id,
+            text=option_in.text,
+            score=option_in.score,
+            is_correct=option_in.is_correct
+        )
+        db.add(db_option)
+    
+    db.commit()
+    db.refresh(db_question)
+    return db_question
+
+# ...
+def create_master_test(db: Session, test: schemas.TestCreate):
+    db_test = models.Test(**test.dict())
+    db.add(db_test)
+    db.commit()
+    db.refresh(db_test)
+    return db_test
+
+def get_master_test(db: Session, test_id: int):
+    return db.query(models.Test).filter(models.Test.id == test_id).first()
+
+def update_master_test(db: Session, test_id: int, test: schemas.TestUpdate):
+    db_test = get_master_test(db, test_id=test_id)
+    if db_test:
+        update_data = test.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_test, key, value)
+        db.commit()
+        db.refresh(db_test)
+    return db_test
+
+
+def get_all_participants(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.Participant).order_by(models.Participant.id.desc()).offset(skip).limit(limit).all()
+
+def get_participant_details(db: Session, participant_id: int):
+    return db.query(models.Participant).filter(models.Participant.id == participant_id).first()
+
+
+def get_participant_answers_for_export(db: Session, participant_id: int):
+    # Query kompleks untuk menggabungkan semua data yang relevan
+    return db.query(
+        models.ParticipantAnswer.id,
+        models.Test.name.label("test_name"),
+        models.Question.text.label("question_text"),
+        models.AnswerOption.text.label("selected_answer"),
+        models.AnswerOption.score.label("answer_score")
+    ).join(models.Question, models.ParticipantAnswer.question_id == models.Question.id)\
+     .join(models.Test, models.Question.test_id == models.Test.id)\
+     .join(models.AnswerOption, models.ParticipantAnswer.selected_option_id == models.AnswerOption.id)\
+     .filter(models.ParticipantAnswer.participant_id == participant_id).all()
+
+
+def get_participant_answers_for_test_export(db: Session, participant_id: int, test_id: int):
+    return db.query(
+        models.ParticipantAnswer.id,
+        models.Question.text.label("question_text"),
+        models.AnswerOption.text.label("selected_answer"),
+        models.AnswerOption.score.label("answer_score")
+    ).join(models.Question, models.ParticipantAnswer.question_id == models.Question.id)\
+     .join(models.AnswerOption, models.ParticipantAnswer.selected_option_id == models.AnswerOption.id)\
+     .filter(
+        models.ParticipantAnswer.participant_id == participant_id,
+        models.Question.test_id == test_id # <-- Filter tambahan
+    ).all()

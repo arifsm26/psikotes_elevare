@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+gunicorn
+sqlalchemy
+python-dotenv
+PyMySQL
+cryptography==42.0.8  # <-- Tentukan versi
+passlib[bcrypt]==1.7.4 # <-- Tentukan versi
+argon2-cffi==23.1.0   # <-- Tentukan versi
+python-jose[cryptography]
+pydantic-settings
+alembic
+python-multipart
+httpx

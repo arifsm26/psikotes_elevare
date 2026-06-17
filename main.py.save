@@ -1,0 +1,144 @@
+# backend/main.py
+from fastapi import FastAPI, Depends, HTTPException, Header
+from sqlalchemy.orm import Session
+from typing import List
+
+# Impor semua komponen yang kita buat
+import crud
+import models
+import schemas
+from database import get_db, engine
+# Buat tabel di database (jika belum ada) - ini alternatif dari alembic untuk startup awal
+# models.Base.metadata.create_all(bind=engine) # Sebaiknya gunakan alembic, jadi ini dikomentari
+
+# --- TAMBAHKAN DEPENDENCY INI UNTUK OTENTIKASI SESI ---
+async def get_current_participant(
+    session_token: str = Header(..., alias="Authorization"), 
+    db: Session = Depends(get_db)
+):
+    # Menghapus "Bearer " dari header
+    if not session_token.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid token format")
+    token = session_token.split(" ")[1]
+
+    participant = crud.get_participant_by_token(db, token=token)
+    if not participant:
+        raise HTTPException(status_code=401, detail="Invalid session token")
+    return participant
+# --------------------------------------------------------
+
+app = FastAPI()
+
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to Psikotes Backend API!"}
+
+@app.post("/packages/validate", response_model=schemas.PackageValidateResponse)
+def validate_test_package(request: schemas.PackageValidateRequest, db: Session = Depends(get_db)):
+    db_package = crud.get_package_by_code(db, access_code=request.access_code)
+    if not db_package:
+        return {"valid": False, "package_name": None}
+    return {"valid": True, "package_name": db_package.name}
+
+@app.post("/sessions/create", response_model=schemas.SessionCreateResponse)
+def create_session(request: schemas.SessionCreateRequest, db: Session = Depends(get_db)):
+    db_participant = crud.create_participant_session(db, request=request)
+    if not db_participant:
+        raise HTTPException(status_code=404, detail="Access code is not valid or inactive.")
+
+
+
+    
+    return schemas.SessionCreateResponse(
+        session_token=db_participant.session_token,
+        participant_name=db_participant.name,
+        package_name=db_participant.package.name,
+        tests=db_participant.package.tests
+    )
+
+# --- AMANKAN ENDPOINT PERTANYAAN ---
+@app.get("/tests/{test_id}/questions", response_model=List[schemas.Question])
+def get_test_questions(
+    test_id: int, 
+    db: Session = Depends(get_db), 
+    participant: models.Participant = Depends(get_current_participant) # <-- Tambahkan ini
+):
+    # Sekarang endpoint ini aman. Variabel 'participant' berisi data peserta yang login.
+    questions = crud.get_questions_for_test(db, test_id=test_id)
+
+    return questions
+
+# --- TAMBAHKAN ENDPOINT BARU INI ---
+@app.post("/sessions/submit-answers")
+def submit_answers(
+    submission: schemas.TestSubmissionRequest,
+    db: Session = Depends(get_db),
+    participant: models.Participant = Depends(get_current_participant)
+):
+   
+    final_score = crud.save_participant_answers(
+        db, 
+        participant_id=participant.id, 
+        submission=submission
+    )
+    # Kembalikan pesan dan skor
+    return {"message": "Answers submitted successfully", "score": final_score}
+
+
+@app.post("/sessions/tests/{test_id}/start")
+def start_test(
+    test_id: int,
+    db: Session = Depends(get_db),
+    participant: models.Participant = Depends(get_current_participant)
+):
+    session = crud.start_test_session(db, participant_id=participant.id, test_id=test_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Test session not found or already completed.")
+    
+    # Kembalikan waktu mulai dan durasi agar frontend bisa menghitung waktu akhir
+    return {
+        "start_time": session.start_time,
+        "duration_minutes": session.test.duration_minutes
+    }
+
+@app.get("/tests/{test_id}/preview", response_model=schemas.TestPreviewResponse)
+def get_test_preview(
+    test_id: int,
+    db: Session = Depends(get_db),
+    participant: models.Participant = Depends(get_current_participant)
+):
+    preview_data = crud.get_test_preview_data(db, test_id=test_id)
+    if not preview_data or not preview_data["test"]:
+        raise HTTPException(status_code=404, detail="Test not found.")
+    
+    test = preview_data["test"]
+    return schemas.TestPreviewResponse(
+        id=test.id,
+        name=test.name,
+        description=test.description,
+        duration_minutes=test.duration_minutes,
+        example_question=preview_data["example_question"]
+    )
+
+
+@app.get("/sessions/status", response_model=schemas.SessionStatusResponse)
+def get_participant_session_status(
+    db: Session = Depends(get_db),
+    participant: models.Participant = Depends(get_current_participant)
+):
+    test_sessions = crud.get_session_status(db, participant_id=participant.id)
+    
+    # Format data agar sesuai dengan skema
+    test_statuses = [
+        schemas.TestStatus(
+            id=session.test.id, 
+            name=session.test.name, 
+            status=session.status
+        ) for session in test_sessions
+    ]
+
+    return schemas.SessionStatusResponse(
+        participant_name=participant.name,
+        package_name=participant.package.name,
+        tests=test_statuses
+    )

@@ -1,0 +1,227 @@
+# backend/models.py (VERSI DIPERBAIKI)
+
+from sqlalchemy import (
+    Boolean, Column, ForeignKey, Integer, String, DateTime, Table, Text, Date, UniqueConstraint
+)
+from sqlalchemy.orm import relationship, declarative_base
+from sqlalchemy.sql import func
+
+Base = declarative_base()
+
+# --- DEFINISI TABEL PENGHUBUNG DI PALING ATAS ---
+template_tests_association = Table(
+    'template_tests', Base.metadata,
+    Column('psychogram_template_id', Integer, ForeignKey('psychogram_templates.id'), primary_key=True),
+    Column('test_id', Integer, ForeignKey('tests.id'), primary_key=True)
+)
+
+# Di bagian atas
+package_tests_association = Table(
+    'package_tests', Base.metadata,
+    Column('test_package_id', Integer, ForeignKey('test_packages.id')),
+    Column('test_id', Integer, ForeignKey('tests.id')),
+    Column('test_order', Integer, default=0) # <-- TAMBAHKAN KOLOM INI
+)
+
+# --- DEFINISI MODEL ---
+
+class PsychogramTemplate(Base):
+    __tablename__ = "psychogram_templates"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False)
+
+    # --- TAMBAHKAN KOLOM INI ---
+    # Aturan: 'NO_C' (tidak boleh ada C), 'ALL_B_OR_BETTER' (minimal semua B), dll.
+    passing_rule = Column(String(50), nullable=False, server_default='NO_C')
+    # ---------------------------
+
+
+    aspects = relationship("Aspect", back_populates="template", cascade="all, delete-orphan")
+    tests = relationship("Test", secondary=template_tests_association, back_populates="psychogram_templates")
+
+class Aspect(Base):
+    __tablename__ = "aspects"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    order = Column(Integer, default=0, nullable=False)
+    template_id = Column(Integer, ForeignKey("psychogram_templates.id"))
+    
+    template = relationship("PsychogramTemplate", back_populates="aspects")
+    sub_aspects = relationship("SubAspect", back_populates="aspect", cascade="all, delete-orphan")
+    __table_args__ = (UniqueConstraint('name', 'template_id', name='_name_template_uc'),)
+
+
+subaspect_tests_association = Table(
+    'subaspect_tests', Base.metadata,
+    Column('sub_aspect_id', Integer, ForeignKey('sub_aspects.id')),
+    Column('test_id', Integer, ForeignKey('tests.id'))
+)
+
+
+class SubAspect(Base):
+    __tablename__ = "sub_aspects"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    order = Column(Integer, default=0, nullable=False)
+    aspect_id = Column(Integer, ForeignKey("aspects.id"))
+
+#    test_id = Column(Integer, ForeignKey("tests.id"))
+    minimum_category = Column(String(10), nullable=False, server_default='B')
+    
+#    aspect = relationship("Aspect", back_populates="sub_aspects")
+#    test = relationship("Test")
+    aspect = relationship("Aspect", back_populates="sub_aspects")
+    # --- BUAT RELASI MANY-TO-MANY BARU ---
+    tests = relationship(
+        "Test",
+        secondary=subaspect_tests_association,
+        back_populates="sub_aspects" # Kita perlu menambahkan relasi balik di Test
+    )
+    # ------------------------------------
+
+
+
+class Test(Base):
+    __tablename__ = "tests"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    duration_minutes = Column(Integer, nullable=False, default=30)
+    is_active = Column(Boolean, default=True, server_default='1', nullable=False)
+    memorization_duration_seconds = Column(Integer, nullable=True)
+    stimulus_text = Column(Text, nullable=True)
+    stimulus_image_url = Column(String(255), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # --- RELASI DUA ARAH ---
+    packages = relationship("TestPackage", secondary=package_tests_association, back_populates="tests")
+    psychogram_templates = relationship("PsychogramTemplate", secondary=template_tests_association, back_populates="tests")
+
+    sub_aspects = relationship(
+        "SubAspect",
+        secondary=subaspect_tests_association,
+        back_populates="tests"
+    )
+    # ----------------------------
+
+class TestPackage(Base):
+    __tablename__ = "test_packages"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    access_code = Column(String(50), unique=True, index=True, nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    psychogram_template_id = Column(Integer, ForeignKey("psychogram_templates.id"), nullable=True)
+    
+    psychogram_template = relationship("PsychogramTemplate")
+    tests = relationship("Test", secondary=package_tests_association, back_populates="packages")
+    participants = relationship("Participant", back_populates="package")
+    order_by="package_tests_association.c.test_order"
+
+    tests = relationship(
+        "Test", 
+        secondary=package_tests_association, 
+        back_populates="packages",
+        order_by="package_tests_association.c.test_order" # <-- BENAR DI SINI
+    )
+    participants = relationship("Participant", back_populates="package")
+
+
+class Question(Base):
+    __tablename__ = "questions"
+    id = Column(Integer, primary_key=True, index=True)
+    test_id = Column(Integer, ForeignKey("tests.id"))
+    text = Column(Text, nullable=False)
+    order = Column(Integer, nullable=False)
+    is_example = Column(Boolean, default=False, server_default='0', nullable=False)
+    image_url = Column(String(255), nullable=True)
+    question_type = Column(String(50), nullable=False, server_default='multiple_choice')
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    test = relationship("Test")
+    options = relationship("AnswerOption", back_populates="question", cascade="all, delete-orphan")
+
+class AnswerOption(Base):
+    __tablename__ = "answer_options"
+    id = Column(Integer, primary_key=True, index=True)
+    question_id = Column(Integer, ForeignKey("questions.id"))
+    text = Column(String(255), nullable=False)
+    score = Column(Integer, default=0)
+    is_correct = Column(Boolean, default=False, server_default='0', nullable=False)
+    image_url = Column(String(255), nullable=True)
+    question = relationship("Question", back_populates="options")
+
+# --- MODEL DATA PESERTA & HASIL ---
+class Participant(Base):
+    __tablename__ = "participants"
+    id = Column(Integer, primary_key=True, index=True)
+    session_token = Column(String(100), unique=True, index=True, nullable=False)
+    name = Column(String(100), nullable=False)
+    test_number = Column(String(50), nullable=False)
+    birth_date = Column(Date, nullable=True)
+    registration_number = Column(String(50), nullable=True)
+    job = Column(String(100), nullable=True)
+    address = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    test_package_id = Column(Integer, ForeignKey("test_packages.id"))
+    package = relationship("TestPackage", back_populates="participants")
+    sessions = relationship("TestSession", back_populates="participant", cascade="all, delete-orphan")
+    __table_args__ = (UniqueConstraint('test_number', 'test_package_id', name='_test_number_package_uc'),)
+
+class TestSession(Base):
+    __tablename__ = "test_sessions"
+    id = Column(Integer, primary_key=True, index=True)
+    status = Column(String(50), default='not_started')
+    start_time = Column(DateTime(timezone=True), nullable=True)
+    end_time = Column(DateTime(timezone=True), nullable=True)
+    score = Column(Integer, nullable=True)
+    participant_id = Column(Integer, ForeignKey("participants.id"))
+    test_id = Column(Integer, ForeignKey("tests.id"))
+    participant = relationship("Participant", back_populates="sessions")
+    test = relationship("Test")
+
+class ParticipantAnswer(Base):
+    __tablename__ = "participant_answers"
+    id = Column(Integer, primary_key=True, index=True)
+    participant_id = Column(Integer, ForeignKey("participants.id"))
+    question_id = Column(Integer, ForeignKey("questions.id"))
+    selected_option_id = Column(Integer, ForeignKey("answer_options.id"), nullable=True)
+    answer_text = Column(Text, nullable=True)
+    participant = relationship("Participant")
+    question = relationship("Question")
+    selected_option = relationship("AnswerOption")
+
+class TestResult(Base):
+    __tablename__ = "test_results"
+    id = Column(Integer, primary_key=True, index=True)
+    participant_id = Column(Integer, ForeignKey("participants.id"))
+    test_package_id = Column(Integer, ForeignKey("test_packages.id"))
+    overall_score = Column(String(255), nullable=True)
+    interpretation_summary = Column(Text, nullable=True)
+    psychologist_notes = Column(Text, nullable=True)
+    generated_at = Column(DateTime(timezone=True), server_default=func.now())
+    participant = relationship("Participant")
+    test_package = relationship("TestPackage")
+
+class InterpretationRule(Base):
+    __tablename__ = "interpretation_rules"
+    id = Column(Integer, primary_key=True, index=True)
+#    test_id = Column(Integer, ForeignKey("tests.id"))
+    min_score = Column(Integer, nullable=False)
+    max_score = Column(Integer, nullable=False)
+    sub_aspect_id = Column(Integer, ForeignKey("sub_aspects.id")) # <-- GANTI DENGAN INI
+    interpretation_text = Column(Text, nullable=False)
+    category = Column(String(10), nullable=True)
+#    test = relationship("Test")
+
+# --- MODEL ADMIN ---
+class AdminUser(Base):
+    __tablename__ = "admin_users"
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(100), unique=True, index=True, nullable=False)
+    hashed_password = Column(String(255), nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
