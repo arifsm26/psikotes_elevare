@@ -719,6 +719,44 @@ def generate_participant_report(db: Session, participant_id: int):
             aspect_report["sub_aspects"].append(sub_aspect_report)
         report_data["aspects"].append(aspect_report)
 
+    # 3.5 Kalkulasi Khusus DISC
+    disc_answers = db.query(models.ParticipantAnswer, models.AnswerOption).join(
+        models.Question, models.ParticipantAnswer.question_id == models.Question.id
+    ).join(
+        models.AnswerOption, models.ParticipantAnswer.selected_option_id == models.AnswerOption.id
+    ).filter(
+        models.ParticipantAnswer.participant_id == participant_id,
+        models.Question.question_type == 'disc'
+    ).all()
+
+    if disc_answers:
+        most_counts = {"D": 0, "I": 0, "S": 0, "C": 0, "*": 0}
+        least_counts = {"D": 0, "I": 0, "S": 0, "C": 0, "*": 0}
+        
+        for ans, opt in disc_answers:
+            cat = opt.category.upper() if opt.category else "*"
+            if cat not in most_counts:
+                cat = "*" # Fallback jika ada kategori aneh
+                
+            if ans.answer_text == "most":
+                most_counts[cat] += 1
+            elif ans.answer_text == "least":
+                least_counts[cat] += 1
+                
+        change_counts = {
+            "D": most_counts["D"] - least_counts["D"],
+            "I": most_counts["I"] - least_counts["I"],
+            "S": most_counts["S"] - least_counts["S"],
+            "C": most_counts["C"] - least_counts["C"],
+            "*": most_counts["*"] - least_counts["*"]
+        }
+        
+        report_data["disc_data"] = {
+            "graph_1_most": most_counts,
+            "graph_2_least": least_counts,
+            "graph_3_change": change_counts
+        }
+
     # 4. Hitung IQ Sederhana (Contoh Rumus)
     iq_val = 90 + (total_score_sum // (completed_tests_count if completed_tests_count > 0 else 1))
     iq_cat = "Average"
