@@ -840,6 +840,21 @@ def manually_update_report(
     
     return updated_report
 
+@router.put("/results/{result_id}/full-update", response_model=schemas.TestResult, tags=["Admin - Results & Reports"])
+def full_update_report(
+    result_id: int,
+    payload: schemas.ReportFullUpdateRequest,
+    db: Session = Depends(get_db),
+    current_admin: models.AdminUser = Depends(get_current_active_admin_user)
+):
+    """
+    Endpoint untuk menyimpan semua isian draft narasi laporan.
+    """
+    updated_report = crud.update_report_full_manual(db, result_id=result_id, report_data=payload)
+    if not updated_report:
+        raise HTTPException(status_code=404, detail="Test Result not found")
+    return updated_report
+
 
 @router.post("/gerai/", response_model=schemas.Gerai, tags=["Admin - Gerai"])
 def create_new_gerai(

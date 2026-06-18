@@ -288,6 +288,20 @@ class ReportUpdateRequest(BaseModel):
     overall_score: str
     aspects: List[AspectUpdateManual]
 
+class ReportFullUpdateRequest(BaseModel):
+    target_position: Optional[str] = None
+    iq_score: Optional[int] = None
+    iq_category: Optional[str] = None
+    iq_narrative: Optional[str] = None
+    personality_type: Optional[str] = None
+    personality_narrative: Optional[str] = None
+    strengths_list: Optional[str] = None
+    weaknesses_list: Optional[str] = None
+    overall_score: Optional[str] = None
+    conclusion: Optional[str] = None
+    development_suggestions: Optional[str] = None
+    interpretation_summary: Optional[str] = None
+
 
 # --- Manajemen Pertanyaan ---
 class AnswerOptionCreate(BaseModel):

@@ -1123,6 +1123,24 @@ def update_report_manual(db: Session, result_id: int, report_data: schemas.Repor
     
     return db_result
 
+def update_report_full_manual(db: Session, result_id: int, report_data: schemas.ReportFullUpdateRequest) -> Optional[models.TestResult]:
+    db_result = db.query(models.TestResult).filter(models.TestResult.id == result_id).first()
+    
+    if not db_result:
+        return None
+
+    update_dict = report_data.dict(exclude_unset=True)
+    for key, value in update_dict.items():
+        setattr(db_result, key, value)
+    
+    db_result.result_type = 'manual'
+    
+    db.commit()
+    db.refresh(db_result)
+    
+    return db_result
+
+
 def get_gerai_by_name(db: Session, name: str) -> Optional[models.Gerai]:
     """Cari gerai berdasarkan nama."""
     return db.query(models.Gerai).filter(models.Gerai.name == name).first()
