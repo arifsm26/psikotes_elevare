@@ -466,10 +466,57 @@ class TestAssociation(BaseModel):
     class Config:
         from_attributes = True
 
-# --- Update forward reference ---
 # Ini akan menyelesaikan referensi "TestPackage" di dalam SessionCreateResponse
 SessionCreateResponse.model_rebuild() 
 
 # Ini akan menyelesaikan referensi "AnswerOptionDetail" di dalam Question
 Question.model_rebuild()
+
+
+# --- SKEMA NORMA & SKORING ---
+class NormDataCreate(BaseModel):
+    raw_score_min: int
+    raw_score_max: int
+    standard_score: int
+    category: Optional[str] = None
+
+class NormDataUpdate(NormDataCreate):
+    pass
+
+class NormData(NormDataCreate):
+    id: int
+    norm_table_id: int
+    class Config: from_attributes = True
+
+class NormTableCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    data: List[NormDataCreate] = []
+
+class NormTableUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+class NormTable(NormTableCreate):
+    id: int
+    created_at: datetime
+    data: List[NormData] = []
+    class Config: from_attributes = True
+
+class ScoringMappingCreate(BaseModel):
+    psychogram_template_id: int
+    sub_aspect_id: Optional[int] = None
+    target_type: str = 'sub_aspect'
+    formula_expression: str
+    norm_table_id: Optional[int] = None
+
+class ScoringMappingUpdate(BaseModel):
+    formula_expression: Optional[str] = None
+    norm_table_id: Optional[int] = None
+
+class ScoringMapping(ScoringMappingCreate):
+    id: int
+    created_at: datetime
+    class Config: from_attributes = True
+
 

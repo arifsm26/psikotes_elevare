@@ -1383,3 +1383,69 @@ def update_test_result_setu_status(db: Session, result_id: int, status: str):
     if db_result:
         db_result.setu_status = status
         db.commit()
+
+# --- CRUD FOR NORM TABLE & SCORING MAPPING ---
+
+def get_norm_tables(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.NormTable).offset(skip).limit(limit).all()
+
+def get_norm_table(db: Session, norm_table_id: int):
+    return db.query(models.NormTable).filter(models.NormTable.id == norm_table_id).first()
+
+def create_norm_table(db: Session, norm_table: schemas.NormTableCreate):
+    db_norm = models.NormTable(name=norm_table.name, description=norm_table.description)
+    db.add(db_norm)
+    db.commit()
+    db.refresh(db_norm)
+    for data_item in norm_table.data:
+        db_data = models.NormData(**data_item.dict(), norm_table_id=db_norm.id)
+        db.add(db_data)
+    db.commit()
+    db.refresh(db_norm)
+    return db_norm
+
+def update_norm_table(db: Session, norm_table_id: int, norm_table: schemas.NormTableUpdate):
+    db_norm = db.query(models.NormTable).filter(models.NormTable.id == norm_table_id).first()
+    if db_norm:
+        if norm_table.name is not None:
+            db_norm.name = norm_table.name
+        if norm_table.description is not None:
+            db_norm.description = norm_table.description
+        db.commit()
+        db.refresh(db_norm)
+    return db_norm
+
+def delete_norm_table(db: Session, norm_table_id: int):
+    db_norm = db.query(models.NormTable).filter(models.NormTable.id == norm_table_id).first()
+    if db_norm:
+        db.delete(db_norm)
+        db.commit()
+
+def add_norm_data(db: Session, norm_table_id: int, data: schemas.NormDataCreate):
+    db_data = models.NormData(**data.dict(), norm_table_id=norm_table_id)
+    db.add(db_data)
+    db.commit()
+    db.refresh(db_data)
+    return db_data
+
+def delete_norm_data(db: Session, norm_data_id: int):
+    db_data = db.query(models.NormData).filter(models.NormData.id == norm_data_id).first()
+    if db_data:
+        db.delete(db_data)
+        db.commit()
+
+def get_scoring_mappings(db: Session, template_id: int):
+    return db.query(models.ScoringMapping).filter(models.ScoringMapping.psychogram_template_id == template_id).all()
+
+def create_scoring_mapping(db: Session, mapping: schemas.ScoringMappingCreate):
+    db_mapping = models.ScoringMapping(**mapping.dict())
+    db.add(db_mapping)
+    db.commit()
+    db.refresh(db_mapping)
+    return db_mapping
+
+def delete_scoring_mapping(db: Session, mapping_id: int):
+    db_mapping = db.query(models.ScoringMapping).filter(models.ScoringMapping.id == mapping_id).first()
+    if db_mapping:
+        db.delete(db_mapping)
+        db.commit()

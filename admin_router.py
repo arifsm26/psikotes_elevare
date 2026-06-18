@@ -1108,4 +1108,64 @@ def delete_test_association(
     success = crud.remove_test_association_from_template(db, template_id, sub_aspect_id, test_id)
     if not success:
         raise HTTPException(status_code=404, detail="Asosiasi tidak ditemukan.")
-    return None
+
+@router.delete("/interpretation-rules/{rule_id}")
+def delete_interpretation_rule(rule_id: int, db: Session = Depends(get_db)):
+    # Asumsikan crud.delete_interpretation_rule ada, jika tidak, kita bisa implementasi
+    # Placeholder:
+    rule = db.query(models.InterpretationRule).filter(models.InterpretationRule.id == rule_id).first()
+    if rule:
+        db.delete(rule)
+        db.commit()
+        return {"message": "Aturan berhasil dihapus"}
+    raise HTTPException(status_code=404, detail="Aturan tidak ditemukan")
+
+# ==========================================
+# ENDPOINTS NORM TABLE & SCORING MAPPING
+# ==========================================
+
+@router.get("/norm-tables", response_model=List[schemas.NormTable])
+def get_norm_tables(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return crud.get_norm_tables(db, skip=skip, limit=limit)
+
+@router.post("/norm-tables", response_model=schemas.NormTable)
+def create_norm_table(norm_table: schemas.NormTableCreate, db: Session = Depends(get_db)):
+    return crud.create_norm_table(db, norm_table=norm_table)
+
+@router.get("/norm-tables/{table_id}", response_model=schemas.NormTable)
+def get_norm_table(table_id: int, db: Session = Depends(get_db)):
+    table = crud.get_norm_table(db, norm_table_id=table_id)
+    if not table:
+        raise HTTPException(status_code=404, detail="Norm table not found")
+    return table
+
+@router.put("/norm-tables/{table_id}", response_model=schemas.NormTable)
+def update_norm_table(table_id: int, norm_table: schemas.NormTableUpdate, db: Session = Depends(get_db)):
+    return crud.update_norm_table(db, norm_table_id=table_id, norm_table=norm_table)
+
+@router.delete("/norm-tables/{table_id}")
+def delete_norm_table(table_id: int, db: Session = Depends(get_db)):
+    crud.delete_norm_table(db, norm_table_id=table_id)
+    return {"message": "Norm table deleted successfully"}
+
+@router.post("/norm-tables/{table_id}/data", response_model=schemas.NormData)
+def add_norm_data(table_id: int, data: schemas.NormDataCreate, db: Session = Depends(get_db)):
+    return crud.add_norm_data(db, norm_table_id=table_id, data=data)
+
+@router.delete("/norm-data/{data_id}")
+def delete_norm_data(data_id: int, db: Session = Depends(get_db)):
+    crud.delete_norm_data(db, norm_data_id=data_id)
+    return {"message": "Norm data deleted successfully"}
+
+@router.get("/psychogram-templates/{template_id}/scoring-mappings", response_model=List[schemas.ScoringMapping])
+def get_scoring_mappings(template_id: int, db: Session = Depends(get_db)):
+    return crud.get_scoring_mappings(db, template_id=template_id)
+
+@router.post("/scoring-mappings", response_model=schemas.ScoringMapping)
+def create_scoring_mapping(mapping: schemas.ScoringMappingCreate, db: Session = Depends(get_db)):
+    return crud.create_scoring_mapping(db, mapping=mapping)
+
+@router.delete("/scoring-mappings/{mapping_id}")
+def delete_scoring_mapping(mapping_id: int, db: Session = Depends(get_db)):
+    crud.delete_scoring_mapping(db, mapping_id=mapping_id)
+    return {"message": "Scoring mapping deleted successfully"}

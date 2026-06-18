@@ -235,6 +235,42 @@ class Gerai(Base):
     admins = relationship("AdminUser", back_populates="gerai")
     packages = relationship("TestPackage", back_populates="gerai")
 
+# --- MODEL NORMA & SKORING ---
+class NormTable(Base):
+    __tablename__ = "norm_tables"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    data = relationship("NormData", back_populates="norm_table", cascade="all, delete-orphan")
+
+class NormData(Base):
+    __tablename__ = "norm_data"
+    id = Column(Integer, primary_key=True, index=True)
+    norm_table_id = Column(Integer, ForeignKey("norm_tables.id", ondelete="CASCADE"))
+    raw_score_min = Column(Integer, nullable=False)
+    raw_score_max = Column(Integer, nullable=False)
+    standard_score = Column(Integer, nullable=False)
+    category = Column(String(10), nullable=True) # A/B/C/R/K/T dll jika langsung dari norma
+    
+    norm_table = relationship("NormTable", back_populates="data")
+
+class ScoringMapping(Base):
+    __tablename__ = "scoring_mappings"
+    id = Column(Integer, primary_key=True, index=True)
+    psychogram_template_id = Column(Integer, ForeignKey("psychogram_templates.id", ondelete="CASCADE"))
+    sub_aspect_id = Column(Integer, ForeignKey("sub_aspects.id", ondelete="CASCADE"), nullable=True) # Null jika untuk IQ atau skor khusus
+    target_type = Column(String(50), nullable=False, server_default='sub_aspect') # 'sub_aspect', 'iq', 'overall'
+    formula_expression = Column(Text, nullable=False) # e.g., "[TEST_1_RAW] * 2" or "NORM([TEST_1_RAW], 1)" (1 is NormTable ID)
+    norm_table_id = Column(Integer, ForeignKey("norm_tables.id", ondelete="SET NULL"), nullable=True) # Opsional tabel norma akhir
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    template = relationship("PsychogramTemplate")
+    sub_aspect = relationship("SubAspect")
+    norm_table = relationship("NormTable")
+
+
 
 # --- MODEL ADMIN ---
 class AdminUser(Base):
