@@ -20,6 +20,7 @@ class Test(BaseModel):
     description: Optional[str] = None
     duration_minutes: int
     is_active: bool
+    require_all_answers: bool
     memorization_duration_seconds: Optional[int] = None
     stimulus_text: Optional[str] = None
     stimulus_image_url: Optional[str] = None
@@ -173,6 +174,7 @@ class TestPreviewResponse(BaseModel):
     name: str
     description: Optional[str] = None
     duration_minutes: int
+    require_all_answers: bool
     memorization_duration_seconds: Optional[int] = None
     stimulus_text: Optional[str] = None
     stimulus_image_url: Optional[str] = None
@@ -252,13 +254,16 @@ class TestCreate(BaseModel):
     description: Optional[str] = None
     duration_minutes: int
     is_active: bool = True
+    require_all_answers: bool = False
     memorization_duration_seconds: Optional[int] = None
     stimulus_text: Optional[str] = None
     stimulus_image_url: Optional[str] = None
 
 class TestUpdate(BaseModel):
     name: Optional[str] = None; description: Optional[str] = None
-    duration_minutes: Optional[int] = None; is_active: Optional[bool] = None
+    duration_minutes: Optional[int] = None
+    is_active: Optional[bool] = None
+    require_all_answers: Optional[bool] = None
     memorization_duration_seconds: Optional[int] = None
     stimulus_text: Optional[str] = None; stimulus_image_url: Optional[str] = None
 

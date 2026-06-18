@@ -69,6 +69,7 @@ class Test(Base):
     description = Column(Text, nullable=True)
     duration_minutes = Column(Integer, nullable=False, default=30)
     is_active = Column(Boolean, default=True, server_default='1', nullable=False)
+    require_all_answers = Column(Boolean, default=False, server_default='0', nullable=False)
     memorization_duration_seconds = Column(Integer, nullable=True)
     stimulus_text = Column(Text, nullable=True)
     stimulus_image_url = Column(String(255), nullable=True)
