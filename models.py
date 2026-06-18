@@ -208,6 +208,9 @@ class TestResult(Base):
     generated_at = Column(DateTime(timezone=True), server_default=func.now())
     psychologist_notes = Column(Text, nullable=True)
     
+    result_type = Column(String(50), nullable=True, default='automatic') # 'automatic' atau 'manual'
+    setu_status = Column(String(50), nullable=True) # 'Terkirim', 'Gagal', dll.
+
     participant = relationship("Participant")
     test_package = relationship("TestPackage")
 
