@@ -146,9 +146,13 @@ def save_participant_answers(db: Session, participant_id: int, submission: schem
                 user_text_lower = answer.answer_text.lower()
                 best_score = 0
                 for opt in question.options:
-                    if opt.text and opt.text.lower() in user_text_lower:
-                        if opt.score and opt.score > best_score:
-                            best_score = opt.score
+                    if opt.text:
+                        # Dukung pemisahan kata kunci menggunakan koma
+                        keywords = [k.strip().lower() for k in opt.text.split(',')]
+                        for keyword in keywords:
+                            if keyword and keyword in user_text_lower:
+                                if opt.score and opt.score > best_score:
+                                    best_score = opt.score
                 auto_score = best_score
                 total_score += auto_score
 
