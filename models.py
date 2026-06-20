@@ -179,6 +179,7 @@ class ParticipantAnswer(Base):
     question_id = Column(Integer, ForeignKey("questions.id"))
     selected_option_id = Column(Integer, ForeignKey("answer_options.id"), nullable=True)
     answer_text = Column(Text, nullable=True)
+    score = Column(Integer, nullable=True)
     participant = relationship("Participant")
     question = relationship("Question")
     selected_option = relationship("AnswerOption")

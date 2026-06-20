@@ -138,10 +138,25 @@ def save_participant_answers(db: Session, participant_id: int, submission: schem
     for answer in submission.answers:
         if answer.answer_text is not None and not answer.selected_option_ids:
             # Jawaban essay
+            
+            # --- Auto Scoring Logic for Essay ---
+            question = db.query(models.Question).filter(models.Question.id == answer.question_id).first()
+            auto_score = 0
+            if question and question.question_type in ['essay', 'short_answer']:
+                user_text_lower = answer.answer_text.lower()
+                best_score = 0
+                for opt in question.options:
+                    if opt.text and opt.text.lower() in user_text_lower:
+                        if opt.score and opt.score > best_score:
+                            best_score = opt.score
+                auto_score = best_score
+                total_score += auto_score
+
             db_answer = models.ParticipantAnswer(
                 participant_id=participant_id,
                 question_id=answer.question_id,
-                answer_text=answer.answer_text
+                answer_text=answer.answer_text,
+                score=auto_score
             )
             db.add(db_answer)
         else:
@@ -1467,3 +1482,51 @@ def delete_scoring_mapping(db: Session, mapping_id: int):
     if db_mapping:
         db.delete(db_mapping)
         db.commit()
+
+def get_essay_answers_by_test(db: Session, participant_id: int, test_id: int):
+    # Ambil semua ParticipantAnswer untuk participant_id dan question_id milik test_id yang bertipe essay
+    answers = db.query(models.ParticipantAnswer).join(models.Question).filter(
+        models.ParticipantAnswer.participant_id == participant_id,
+        models.Question.test_id == test_id,
+        models.Question.question_type.in_(['essay', 'short_answer'])
+    ).all()
+    
+    return answers
+
+def update_essay_score(db: Session, answer_id: int, new_score: int):
+    answer = db.query(models.ParticipantAnswer).filter(models.ParticipantAnswer.id == answer_id).first()
+    if not answer:
+        return None
+    
+    answer.score = new_score
+    db.commit()
+    
+    # Recalculate total score for the session
+    question = db.query(models.Question).filter(models.Question.id == answer.question_id).first()
+    if question:
+        session = db.query(models.TestSession).filter(
+            models.TestSession.participant_id == answer.participant_id,
+            models.TestSession.test_id == question.test_id
+        ).first()
+        
+        if session:
+            # Re-sum all scores
+            all_answers = db.query(models.ParticipantAnswer).join(models.Question).filter(
+                models.ParticipantAnswer.participant_id == session.participant_id,
+                models.Question.test_id == session.test_id
+            ).all()
+            
+            new_total = 0
+            for a in all_answers:
+                if a.selected_option_id:
+                    # get score from option
+                    opt = db.query(models.AnswerOption).filter(models.AnswerOption.id == a.selected_option_id).first()
+                    if opt and opt.score:
+                        new_total += opt.score
+                elif a.score is not None:
+                    new_total += a.score
+            
+            session.score = new_total
+            db.commit()
+            
+    return answer

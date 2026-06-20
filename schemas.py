@@ -150,6 +150,17 @@ class TestSubmissionResponse(BaseModel):
     message: str
     score: int
 
+class EssayAnswerResponse(BaseModel):
+    id: int
+    question_text: str
+    answer_text: Optional[str] = None
+    score: Optional[int] = None
+    options: List["AnswerOptionDetail"] = []
+    class Config: from_attributes = True
+
+class UpdateEssayScoreRequest(BaseModel):
+    score: int
+
 class AnswerOptionDetail(BaseModel):
     id: int
     text: str

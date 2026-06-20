@@ -1184,3 +1184,41 @@ def create_scoring_mapping(mapping: schemas.ScoringMappingCreate, db: Session = 
 def delete_scoring_mapping(mapping_id: int, db: Session = Depends(get_db)):
     crud.delete_scoring_mapping(db, mapping_id=mapping_id)
     return {"message": "Scoring mapping deleted successfully"}
+
+@router.get("/participants/{participant_id}/tests/{test_id}/essay-answers", response_model=List[schemas.EssayAnswerResponse])
+def get_essay_answers(
+    participant_id: int,
+    test_id: int, 
+    db: Session = Depends(get_db), 
+    current_admin: models.AdminUser = Depends(get_current_active_admin_user)
+):
+    answers = crud.get_essay_answers_by_test(db, participant_id=participant_id, test_id=test_id)
+    res = []
+    for a in answers:
+        res.append(schemas.EssayAnswerResponse(
+            id=a.id,
+            question_text=a.question.text,
+            answer_text=a.answer_text,
+            score=a.score,
+            options=a.question.options
+        ))
+    return res
+
+@router.put("/answers/{answer_id}/score", response_model=schemas.EssayAnswerResponse)
+def update_essay_score_endpoint(
+    answer_id: int, 
+    payload: schemas.UpdateEssayScoreRequest, 
+    db: Session = Depends(get_db),
+    current_admin: models.AdminUser = Depends(get_current_active_admin_user)
+):
+    updated_answer = crud.update_essay_score(db, answer_id=answer_id, new_score=payload.score)
+    if not updated_answer:
+        raise HTTPException(status_code=404, detail="Answer not found")
+    
+    return schemas.EssayAnswerResponse(
+        id=updated_answer.id,
+        question_text=updated_answer.question.text,
+        answer_text=updated_answer.answer_text,
+        score=updated_answer.score,
+        options=updated_answer.question.options
+    )
