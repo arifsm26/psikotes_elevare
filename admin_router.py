@@ -1170,8 +1170,8 @@ def add_norm_data(table_id: int, data: schemas.NormDataCreate, db: Session = Dep
 @router.delete("/norm-data/{data_id}")
 def delete_norm_data(
     data_id: int, 
-    db: Session = Depends(database.get_db),
-    admin_user: models.AdminUser = Depends(auth.get_current_admin_user)
+    db: Session = Depends(get_db),
+    admin_user: models.AdminUser = Depends(get_current_active_admin_user)
 ):
     crud.delete_norm_data(db=db, data_id=data_id)
     return {"message": "Norm data deleted successfully"}
@@ -1180,8 +1180,8 @@ def delete_norm_data(
 def update_norm_data(
     data_id: int,
     norm_data: schemas.NormDataUpdate,
-    db: Session = Depends(database.get_db),
-    admin_user: models.AdminUser = Depends(auth.get_current_admin_user)
+    db: Session = Depends(get_db),
+    admin_user: models.AdminUser = Depends(get_current_active_admin_user)
 ):
     db_data = db.query(models.NormData).filter(models.NormData.id == data_id).first()
     if not db_data:
