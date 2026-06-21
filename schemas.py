@@ -18,6 +18,7 @@ class Test(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
+    scoring_module: Optional[str] = 'default'
     duration_minutes: int
     is_active: bool
     require_all_answers: bool
@@ -263,6 +264,7 @@ class TestOrderUpdate(BaseModel):
 class TestCreate(BaseModel):
     name: str
     description: Optional[str] = None
+    scoring_module: Optional[str] = 'default'
     duration_minutes: int
     is_active: bool = True
     require_all_answers: bool = False
@@ -272,6 +274,7 @@ class TestCreate(BaseModel):
 
 class TestUpdate(BaseModel):
     name: Optional[str] = None; description: Optional[str] = None
+    scoring_module: Optional[str] = None
     duration_minutes: Optional[int] = None
     is_active: Optional[bool] = None
     require_all_answers: Optional[bool] = None

@@ -67,6 +67,7 @@ class Test(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     description = Column(Text, nullable=True)
+    scoring_module = Column(String(50), nullable=True, default='default', server_default='default')
     duration_minutes = Column(Integer, nullable=False, default=30)
     is_active = Column(Boolean, default=True, server_default='1', nullable=False)
     require_all_answers = Column(Boolean, default=False, server_default='0', nullable=False)

@@ -1,0 +1,334 @@
+{
+    "140": {
+        "IQ": 160,
+        "PERSENTIL": 100
+    },
+    "139": {
+        "IQ": 158,
+        "PERSENTIL": 100
+    },
+    "138": {
+        "IQ": 157,
+        "PERSENTIL": 100
+    },
+    "137": {
+        "IQ": 155,
+        "PERSENTIL": 100
+    },
+    "136": {
+        "IQ": 154,
+        "PERSENTIL": 100
+    },
+    "135": {
+        "IQ": 152,
+        "PERSENTIL": 100
+    },
+    "134": {
+        "IQ": 151,
+        "PERSENTIL": 100
+    },
+    "133": {
+        "IQ": 149,
+        "PERSENTIL": 100
+    },
+    "132": {
+        "IQ": 145,
+        "PERSENTIL": 100
+    },
+    "131": {
+        "IQ": 146,
+        "PERSENTIL": 100
+    },
+    "130": {
+        "IQ": 145,
+        "PERSENTIL": 100
+    },
+    "129": {
+        "IQ": 143,
+        "PERSENTIL": 100
+    },
+    "128": {
+        "IQ": 142,
+        "PERSENTIL": 100
+    },
+    "127": {
+        "IQ": 140,
+        "PERSENTIL": 100
+    },
+    "126": {
+        "IQ": 139,
+        "PERSENTIL": 100
+    },
+    "125": {
+        "IQ": 137,
+        "PERSENTIL": 99
+    },
+    "124": {
+        "IQ": 136,
+        "PERSENTIL": 99
+    },
+    "123": {
+        "IQ": 134,
+        "PERSENTIL": 99
+    },
+    "122": {
+        "IQ": 133,
+        "PERSENTIL": 99
+    },
+    "121": {
+        "IQ": 131,
+        "PERSENTIL": 98
+    },
+    "120": {
+        "IQ": 130,
+        "PERSENTIL": 98
+    },
+    "119": {
+        "IQ": 128,
+        "PERSENTIL": 97
+    },
+    "118": {
+        "IQ": 127,
+        "PERSENTIL": 96
+    },
+    "117": {
+        "IQ": 125,
+        "PERSENTIL": 95
+    },
+    "116": {
+        "IQ": 124,
+        "PERSENTIL": 95
+    },
+    "115": {
+        "IQ": 122,
+        "PERSENTIL": 93
+    },
+    "114": {
+        "IQ": 121,
+        "PERSENTIL": 92
+    },
+    "113": {
+        "IQ": 120,
+        "PERSENTIL": 90
+    },
+    "112": {
+        "IQ": 118,
+        "PERSENTIL": 88
+    },
+    "111": {
+        "IQ": 116,
+        "PERSENTIL": 86
+    },
+    "110": {
+        "IQ": 115,
+        "PERSENTIL": 84
+    },
+    "109": {
+        "IQ": 113,
+        "PERSENTIL": 81
+    },
+    "108": {
+        "IQ": 112,
+        "PERSENTIL": 79
+    },
+    "107": {
+        "IQ": 110,
+        "PERSENTIL": 76
+    },
+    "106": {
+        "IQ": 109,
+        "PERSENTIL": 73
+    },
+    "105": {
+        "IQ": 107,
+        "PERSENTIL": 70
+    },
+    "104": {
+        "IQ": 106,
+        "PERSENTIL": 66
+    },
+    "103": {
+        "IQ": 104,
+        "PERSENTIL": 62
+    },
+    "102": {
+        "IQ": 103,
+        "PERSENTIL": 58
+    },
+    "101": {
+        "IQ": 101,
+        "PERSENTIL": 54
+    },
+    "100": {
+        "IQ": 100,
+        "PERSENTIL": 50
+    },
+    "99": {
+        "IQ": 98,
+        "PERSENTIL": 46
+    },
+    "98": {
+        "IQ": 97,
+        "PERSENTIL": 42
+    },
+    "97": {
+        "IQ": 96,
+        "PERSENTIL": 38
+    },
+    "96": {
+        "IQ": 94,
+        "PERSENTIL": 34
+    },
+    "95": {
+        "IQ": 92,
+        "PERSENTIL": 30
+    },
+    "94": {
+        "IQ": 91,
+        "PERSENTIL": 27
+    },
+    "93": {
+        "IQ": 90,
+        "PERSENTIL": 24
+    },
+    "92": {
+        "IQ": 88,
+        "PERSENTIL": 21
+    },
+    "91": {
+        "IQ": 87,
+        "PERSENTIL": 18
+    },
+    "90": {
+        "IQ": 85,
+        "PERSENTIL": 15
+    },
+    "89": {
+        "IQ": 84,
+        "PERSENTIL": 14
+    },
+    "88": {
+        "IQ": 82,
+        "PERSENTIL": 12
+    },
+    "87": {
+        "IQ": 81,
+        "PERSENTIL": 10
+    },
+    "86": {
+        "IQ": 79,
+        "PERSENTIL": 8
+    },
+    "85": {
+        "IQ": 78,
+        "PERSENTIL": 7
+    },
+    "84": {
+        "IQ": 76,
+        "PERSENTIL": 5
+    },
+    "83": {
+        "IQ": 75,
+        "PERSENTIL": 4
+    },
+    "82": {
+        "IQ": 73,
+        "PERSENTIL": 3
+    },
+    "81": {
+        "IQ": 71,
+        "PERSENTIL": 2
+    },
+    "80": {
+        "IQ": 70,
+        "PERSENTIL": 2
+    },
+    "79": {
+        "IQ": 68,
+        "PERSENTIL": 1
+    },
+    "78": {
+        "IQ": 67,
+        "PERSENTIL": 1
+    },
+    "77": {
+        "IQ": 66,
+        "PERSENTIL": 1
+    },
+    "76": {
+        "IQ": 64,
+        "PERSENTIL": 1
+    },
+    "75": {
+        "IQ": 62,
+        "PERSENTIL": 0
+    },
+    "74": {
+        "IQ": 61,
+        "PERSENTIL": 0
+    },
+    "73": {
+        "IQ": 59,
+        "PERSENTIL": 0
+    },
+    "72": {
+        "IQ": 58,
+        "PERSENTIL": 0
+    },
+    "71": {
+        "IQ": 56,
+        "PERSENTIL": 0
+    },
+    "70": {
+        "IQ": 55,
+        "PERSENTIL": 0
+    },
+    "69": {
+        "IQ": 53,
+        "PERSENTIL": 0
+    },
+    "68": {
+        "IQ": 52,
+        "PERSENTIL": 0
+    },
+    "67": {
+        "IQ": 50,
+        "PERSENTIL": 0
+    },
+    "66": {
+        "IQ": 49,
+        "PERSENTIL": 0
+    },
+    "65": {
+        "IQ": 47,
+        "PERSENTIL": 0
+    },
+    "64": {
+        "IQ": 46,
+        "PERSENTIL": 0
+    },
+    "63": {
+        "IQ": 44,
+        "PERSENTIL": 0
+    },
+    "62": {
+        "IQ": 43,
+        "PERSENTIL": 0
+    },
+    "61": {
+        "IQ": 41,
+        "PERSENTIL": 0
+    },
+    "60": {
+        "IQ": 40,
+        "PERSENTIL": 0
+    },
+    "59": {
+        "IQ": 39,
+        "PERSENTIL": 0
+    },
+    "58": {
+        "IQ": 37,
+        "PERSENTIL": 0
+    }
+}

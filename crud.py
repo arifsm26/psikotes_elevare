@@ -188,8 +188,44 @@ def save_participant_answers(db: Session, participant_id: int, submission: schem
                 if option and option.score:
                     total_score += option.score
 
-    # Update status sesi
+    # Update status sesi dan jalankan modular skoring
     if session:
+        db.commit() # Simpan semua jawaban ke DB terlebih dahulu
+
+        # Ambil info test dan participant untuk modular skoring
+        test = db.query(models.Test).filter(models.Test.id == submission.test_id).first()
+        participant = db.query(models.Participant).filter(models.Participant.id == participant_id).first()
+        test_package_id = participant.test_package_id if participant else 0
+
+        # Ambil jawaban beserta relasinya dari DB untuk dilempar ke modul skoring
+        question_ids = [a.question_id for a in submission.answers]
+        saved_answers = db.query(models.ParticipantAnswer).options(
+            joinedload(models.ParticipantAnswer.selected_option),
+            joinedload(models.ParticipantAnswer.question)
+        ).filter(
+            models.ParticipantAnswer.participant_id == participant_id,
+            models.ParticipantAnswer.question_id.in_(question_ids)
+        ).all()
+
+        # Panggil Modular Scoring
+        from scoring import get_scorer
+        scoring_module = test.scoring_module if test and test.scoring_module else 'default'
+        scorer_class = get_scorer(scoring_module)
+
+        if scoring_module != 'default':
+            # Jika menggunakan modul khusus (IST, PAPI, dll)
+            score_result = scorer_class.calculate_score(
+                participant_answers=saved_answers,
+                test_package_id=test_package_id,
+                participant_id=participant_id,
+                db_session=db
+            )
+            # Anda bisa memproses dictionary 'score_result' di sini 
+            # misalnya menyimpan ke kolom-kolom spesifik di TestResult nantinya.
+            # Untuk sesi, kita pakai overall_score
+            total_score = int(score_result.get("total_correct", total_score))
+
+        # Update Session
         session.status = 'completed'
         session.score = total_score
         db.commit()
@@ -688,6 +724,40 @@ def delete_sub_aspect(db: Session, sub_aspect_id: int):
 
 # /opt/psikotes_app/backend/crud.py
 
+import re
+
+def safe_eval(expr, env_vars):
+    if not expr:
+        return 0
+    try:
+        # Ganti [VAR_NAME] dengan nilainya dari env_vars
+        def replace_var(match):
+            var_name = match.group(1)
+            # Ambil nilai, default 0 jika tidak ada
+            return str(env_vars.get(var_name, 0))
+        
+        parsed_expr = re.sub(r'\[(.*?)\]', replace_var, str(expr))
+        
+        # Definisikan fungsi yang diizinkan (misal SUM)
+        def custom_sum(*args):
+            return sum(args)
+            
+        allowed_locals = {
+            "SUM": custom_sum,
+            "sum": custom_sum
+        }
+        
+        # Evaluasi dengan globals kosong untuk keamanan
+        result = eval(parsed_expr, {"__builtins__": None}, allowed_locals)
+        
+        # Jika hasil float tapi sebenarnya int, ubah ke int
+        if isinstance(result, float) and result.is_integer():
+            return int(result)
+        return result
+    except Exception as e:
+        print(f"Error evaluating formula '{expr}' (parsed as '{parsed_expr}'): {e}")
+        return 0
+
 def generate_participant_report(db: Session, participant_id: int):
     # 1. Ambil detail peserta
     participant = get_participant_details(db, participant_id=participant_id)
@@ -705,46 +775,94 @@ def generate_participant_report(db: Session, participant_id: int):
     total_score_sum = 0
     completed_tests_count = 0
 
+    # 3.1. Persiapkan Environment Variabel
+    env_vars = {}
+    for session in participant.sessions:
+        if session.status == 'completed' and session.score is not None:
+            env_vars[f"TEST_{session.test_id}_RAW"] = session.score
+
+    # 3.2. Ambil Mapping Template
+    template = participant.package.psychogram_template if participant.package else None
+    mappings = []
+    if template:
+        mappings = db.query(models.ScoringMapping).filter(models.ScoringMapping.psychogram_template_id == template.id).all()
+        
+    sub_aspect_mappings = {m.sub_aspect_id: m for m in mappings if m.target_type == 'sub_aspect'}
+    iq_mapping = next((m for m in mappings if m.target_type == 'iq'), None)
+
     for aspect in all_aspects:
         aspect_report = {"name": aspect.name, "sub_aspects": []}
         
         for sub_aspect in sorted(aspect.sub_aspects, key=lambda x: x.name):
-            sub_aspect_report = {"name": sub_aspect.name, "category": "N/A"}
+            sub_aspect_report = {"name": sub_aspect.name, "category": "C"}
             
-            # Cari test_id yang di-mapping ke sub_aspect ini via template paket
-            template = participant.package.psychogram_template if participant.package else None
+            # Cari test_id yang di-mapping via test_associations (untuk fallback)
             mapped_test_id = None
             if template:
                 for assoc in template.test_associations:
                     if assoc.sub_aspect_id == sub_aspect.id:
                         mapped_test_id = assoc.test_id
                         break
-                        
-            # Cari sesi tes yang sesuai
-            session = None
-            if mapped_test_id:
-                session = next(
-                    (s for s in participant.sessions if s.test_id == mapped_test_id and s.status == 'completed'),
-                    None
-                )
-            
-            if session and session.score is not None:
-                total_score_sum += session.score
-                completed_tests_count += 1
+
+            # Cek Scoring Mapping Dinamis (Memprioritaskan rumus dinamis)
+            mapping = sub_aspect_mappings.get(sub_aspect.id)
+            if mapping and mapping.formula_expression:
+                # Evaluasi formula
+                raw_val = safe_eval(mapping.formula_expression, env_vars)
                 
-                # Ambil kategori (R, K, C, B, T) dari interpretation_rules
-                rule = db.query(models.InterpretationRule).filter(
-                    models.InterpretationRule.test_id == mapped_test_id,
-                    models.InterpretationRule.min_score <= session.score,
-                    models.InterpretationRule.max_score >= session.score
-                ).first()
-                
-                if rule and rule.category:
-                    sub_aspect_report["category"] = rule.category.upper()
-                    if sub_aspect_report["category"] in ["R", "K"]:
-                        final_conclusion = "Tidak Disarankan"
+                if mapping.norm_table_id:
+                    # Cari norma
+                    norm_data = db.query(models.NormData).filter(
+                        models.NormData.norm_table_id == mapping.norm_table_id,
+                        models.NormData.raw_score_min <= raw_val,
+                        models.NormData.raw_score_max >= raw_val
+                    ).first()
+                    
+                    if norm_data:
+                        final_sw = norm_data.standard_score
+                        sub_aspect_report["category"] = norm_data.category.upper() if norm_data.category else "C"
+                    else:
+                        final_sw = raw_val # fallback
+                        sub_aspect_report["category"] = "C"
                 else:
-                    sub_aspect_report["category"] = "C"
+                    final_sw = raw_val
+                    
+                # Simpan ke env_vars untuk digunakan di rumus IQ
+                env_vars[f"SUBASPECT_{sub_aspect.id}_SW"] = final_sw
+                if mapped_test_id:
+                    env_vars[f"TEST_{mapped_test_id}_SW"] = final_sw
+                    
+                if sub_aspect_report["category"] in ["R", "K"]:
+                    final_conclusion = "Tidak Disarankan"
+                    
+            else:
+                # Fallback ke logika lama (InterpretationRule)
+                session = None
+                if mapped_test_id:
+                    session = next(
+                        (s for s in participant.sessions if s.test_id == mapped_test_id and s.status == 'completed'),
+                        None
+                    )
+                
+                if session and session.score is not None:
+                    total_score_sum += session.score
+                    completed_tests_count += 1
+                    
+                    rule = db.query(models.InterpretationRule).filter(
+                        models.InterpretationRule.test_id == mapped_test_id,
+                        models.InterpretationRule.min_score <= session.score,
+                        models.InterpretationRule.max_score >= session.score
+                    ).first()
+                    
+                    if rule and rule.category:
+                        sub_aspect_report["category"] = rule.category.upper()
+                        if sub_aspect_report["category"] in ["R", "K"]:
+                            final_conclusion = "Tidak Disarankan"
+                    else:
+                        sub_aspect_report["category"] = "C"
+                        
+                    env_vars[f"SUBASPECT_{sub_aspect.id}_SW"] = session.score
+                    env_vars[f"TEST_{mapped_test_id}_SW"] = session.score
 
             aspect_report["sub_aspects"].append(sub_aspect_report)
         report_data["aspects"].append(aspect_report)
@@ -787,11 +905,30 @@ def generate_participant_report(db: Session, participant_id: int):
             "graph_3_change": change_counts
         }
 
-    # 4. Hitung IQ Sederhana (Contoh Rumus)
-    iq_val = 90 + (total_score_sum // (completed_tests_count if completed_tests_count > 0 else 1))
+    # 4. Hitung IQ 
+    iq_val = 90
     iq_cat = "Average"
-    if iq_val > 110: iq_cat = "High Average"
-    elif iq_val < 90: iq_cat = "Low Average"
+    
+    if iq_mapping and iq_mapping.formula_expression:
+        iq_raw = safe_eval(iq_mapping.formula_expression, env_vars)
+        if iq_mapping.norm_table_id:
+            norm_data = db.query(models.NormData).filter(
+                models.NormData.norm_table_id == iq_mapping.norm_table_id,
+                models.NormData.raw_score_min <= iq_raw,
+                models.NormData.raw_score_max >= iq_raw
+            ).first()
+            if norm_data:
+                iq_val = norm_data.standard_score
+                iq_cat = norm_data.category if norm_data.category else "Average"
+            else:
+                iq_val = iq_raw
+        else:
+            iq_val = iq_raw
+    else:
+        # Fallback IQ Sederhana (Contoh Rumus Lama)
+        iq_val = 90 + (total_score_sum // (completed_tests_count if completed_tests_count > 0 else 1))
+        if iq_val > 110: iq_cat = "High Average"
+        elif iq_val < 90: iq_cat = "Low Average"
 
     # 5. Siapkan Narasi Default
     default_iq_text = f"Hasil pemeriksaan menunjukkan bahwa {participant.name} memiliki kapasitas intelektual yang berada pada taraf {iq_cat}."
