@@ -1,9 +1,9 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from database import SQLALCHEMY_DATABASE_URL
+from database import DATABASE_URL
 
 # Buat engine dan koneksi langsung
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def upgrade_local_db():
