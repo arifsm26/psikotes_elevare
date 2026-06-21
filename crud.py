@@ -781,6 +781,53 @@ def generate_participant_report(db: Session, participant_id: int):
         if session.status == 'completed' and session.score is not None:
             env_vars[f"TEST_{session.test_id}_RAW"] = session.score
 
+            # Injeksi Nilai Rinci dari Modul Skoring (Misal IST: IST_SE_SW, IST_IQ)
+            test = db.query(models.Test).filter(models.Test.id == session.test_id).first()
+            if test and getattr(test, 'scoring_module', 'default') != 'default':
+                try:
+                    from scoring import get_scorer
+                    scorer_class = get_scorer(test.scoring_module)
+                    
+                    saved_answers = db.query(models.ParticipantAnswer).join(models.Question).options(
+                        joinedload(models.ParticipantAnswer.selected_option),
+                        joinedload(models.ParticipantAnswer.question)
+                    ).filter(
+                        models.ParticipantAnswer.participant_id == participant_id,
+                        models.Question.test_id == session.test_id
+                    ).all()
+                    
+                    # Kita bisa panggil hitung ulang (cepat karena ini hanya saat laporan di-generate)
+                    test_package_id = participant.test_package_id if hasattr(participant, 'test_package_id') else 0
+                    score_result = scorer_class.calculate_score(
+                        participant_answers=saved_answers,
+                        test_package_id=test_package_id,
+                        participant_id=participant_id,
+                        db_session=db
+                    )
+                    
+                    if "details" in score_result:
+                        details = score_result["details"]
+                        prefix = test.scoring_module.upper() # misal "IST"
+                        
+                        if "standard_scores" in details:
+                            for subtest, sw in details["standard_scores"].items():
+                                env_vars[f"{prefix}_{subtest}_SW"] = sw
+                                
+                        if "raw_scores" in details:
+                            for subtest, rw in details["raw_scores"].items():
+                                env_vars[f"{prefix}_{subtest}_RW"] = rw
+                                
+                        if "gest_ws" in details:
+                            env_vars[f"{prefix}_GEST"] = details["gest_ws"]
+                            
+                        if "ss" in details:
+                            env_vars[f"{prefix}_SS"] = details["ss"]
+                            
+                        if "iq_score" in score_result:
+                            env_vars[f"{prefix}_IQ"] = score_result["iq_score"]
+                except Exception as e:
+                    print(f"Error fetching modular scores for report: {e}")
+
     # 3.2. Ambil Mapping Template
     template = participant.package.psychogram_template if participant.package else None
     mappings = []
