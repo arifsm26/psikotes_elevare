@@ -663,8 +663,7 @@ def get_all_aspects(db: Session):
 
 def get_aspects_for_template(db: Session, template_id: int):
     return db.query(models.Aspect).options(
-        # Cukup muat relasi ke sub_aspects
-        joinedload(models.Aspect.sub_aspects)
+        joinedload(models.Aspect.sub_aspects).joinedload(models.SubAspect.tests)
     ).filter(models.Aspect.template_id == template_id).order_by(models.Aspect.order).all()
 
 def create_aspect(db: Session, aspect: schemas.AspectCreate, template_id: int):
