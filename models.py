@@ -258,7 +258,7 @@ class NormData(Base):
     raw_score_min = Column(Integer, nullable=False)
     raw_score_max = Column(Integer, nullable=False)
     standard_score = Column(Integer, nullable=False)
-    category = Column(String(10), nullable=True) # A/B/C/R/K/T dll jika langsung dari norma
+    category = Column(String(50), nullable=True) # A/B/C/R/K/T dll jika langsung dari norma
     
     norm_table = relationship("NormTable", back_populates="data")
 
