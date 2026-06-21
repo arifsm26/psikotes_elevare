@@ -1409,8 +1409,14 @@ def delete_gerai(db: Session, gerai_id: int) -> bool:
 def get_all_master_sub_aspects(db: Session):
     return db.query(models.SubAspect).order_by(models.SubAspect.name).all()
 
-def create_master_sub_aspect(db: Session, sub_aspect: schemas.SubAspectCreateMaster): # Skema baru
-    db_sub_aspect = models.SubAspect(name=sub_aspect.name, minimum_category=sub_aspect.minimum_category)
+def create_master_sub_aspect(db: Session, sub_aspect: schemas.SubAspectCreateMaster):
+    db_sub_aspect = models.SubAspect(
+        name=sub_aspect.name, 
+        minimum_category=sub_aspect.minimum_category,
+        description=sub_aspect.description,
+        low_score_description=sub_aspect.low_score_description,
+        high_score_description=sub_aspect.high_score_description
+    )
     db.add(db_sub_aspect)
     db.commit()
     db.refresh(db_sub_aspect)
