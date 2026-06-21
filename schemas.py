@@ -483,6 +483,9 @@ class ReportTypeUpdateRequest(BaseModel):
 class SubAspectCreateMaster(BaseModel):
     name: str
     minimum_category: str = 'B'
+    description: Optional[str] = None
+    low_score_description: Optional[str] = None
+    high_score_description: Optional[str] = None
 
 
 class TestAssociationCreate(BaseModel):
