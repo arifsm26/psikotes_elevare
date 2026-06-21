@@ -1168,9 +1168,33 @@ def add_norm_data(table_id: int, data: schemas.NormDataCreate, db: Session = Dep
     return crud.add_norm_data(db, norm_table_id=table_id, data=data)
 
 @router.delete("/norm-data/{data_id}")
-def delete_norm_data(data_id: int, db: Session = Depends(get_db)):
-    crud.delete_norm_data(db, norm_data_id=data_id)
+def delete_norm_data(
+    data_id: int, 
+    db: Session = Depends(database.get_db),
+    admin_user: models.AdminUser = Depends(auth.get_current_admin_user)
+):
+    crud.delete_norm_data(db=db, data_id=data_id)
     return {"message": "Norm data deleted successfully"}
+
+@router.put("/norm-data/{data_id}", response_model=schemas.NormData)
+def update_norm_data(
+    data_id: int,
+    norm_data: schemas.NormDataUpdate,
+    db: Session = Depends(database.get_db),
+    admin_user: models.AdminUser = Depends(auth.get_current_admin_user)
+):
+    db_data = db.query(models.NormData).filter(models.NormData.id == data_id).first()
+    if not db_data:
+        raise HTTPException(status_code=404, detail="Norm data not found")
+        
+    db_data.raw_score_min = norm_data.raw_score_min
+    db_data.raw_score_max = norm_data.raw_score_max
+    db_data.standard_score = norm_data.standard_score
+    db_data.category = norm_data.category
+    
+    db.commit()
+    db.refresh(db_data)
+    return db_data
 
 @router.get("/psychogram-templates/{template_id}/scoring-mappings", response_model=List[schemas.ScoringMapping])
 def get_scoring_mappings(template_id: int, db: Session = Depends(get_db)):
