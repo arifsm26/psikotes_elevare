@@ -622,6 +622,18 @@ def create_new_interpretation_rule(
 ):
     return crud.create_interpretation_rule(db, rule=rule)
 
+@router.put("/interpretation-rules/{rule_id}", response_model=schemas.InterpretationRule)
+def update_existing_interpretation_rule(
+    rule_id: int,
+    rule: schemas.InterpretationRuleCreate,
+    db: Session = Depends(get_db),
+    current_admin: models.AdminUser = Depends(get_current_active_admin_user)
+):
+    updated_rule = crud.update_interpretation_rule(db, rule_id=rule_id, rule_data=rule)
+    if not updated_rule:
+        raise HTTPException(status_code=404, detail="Interpretation rule not found")
+    return updated_rule
+
 @router.delete("/interpretation-rules/{rule_id}", status_code=204)
 def delete_an_interpretation_rule(
     rule_id: int,

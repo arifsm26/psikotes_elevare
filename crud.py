@@ -636,6 +636,20 @@ def create_interpretation_rule(db: Session, rule: schemas.InterpretationRuleCrea
     return db_rule
 
 
+def update_interpretation_rule(db: Session, rule_id: int, rule_data: schemas.InterpretationRuleCreate):
+    db_rule = db.query(models.InterpretationRule).filter(models.InterpretationRule.id == rule_id).first()
+    if not db_rule:
+        return None
+
+    update_data = rule_data.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_rule, key, value)
+        
+    db.commit()
+    db.refresh(db_rule)
+    return db_rule
+
+
 def delete_interpretation_rule(db: Session, rule_id: int):
     db_rule = db.query(models.InterpretationRule).filter(models.InterpretationRule.id == rule_id).first()
     if db_rule:
