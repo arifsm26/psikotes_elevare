@@ -662,9 +662,29 @@ def get_all_aspects(db: Session):
     return db.query(models.Aspect).order_by(models.Aspect.order).all()
 
 def get_aspects_for_template(db: Session, template_id: int):
-    return db.query(models.Aspect).options(
-        joinedload(models.Aspect.sub_aspects).joinedload(models.SubAspect.tests)
+    # 1. Ambil aspek & sub-aspek
+    aspects = db.query(models.Aspect).options(
+        joinedload(models.Aspect.sub_aspects)
     ).filter(models.Aspect.template_id == template_id).order_by(models.Aspect.order).all()
+    
+    # 2. Ambil test associations untuk template ini beserta objek Test-nya
+    test_assocs = db.query(models.TemplateSubAspectTest).options(
+        joinedload(models.TemplateSubAspectTest.test)
+    ).filter(models.TemplateSubAspectTest.template_id == template_id).all()
+    
+    # 3. Kelompokkan tests berdasarkan sub_aspect_id
+    tests_by_sub_aspect = {}
+    for assoc in test_assocs:
+        if assoc.sub_aspect_id not in tests_by_sub_aspect:
+            tests_by_sub_aspect[assoc.sub_aspect_id] = []
+        tests_by_sub_aspect[assoc.sub_aspect_id].append(assoc.test)
+        
+    # 4. Inject tests ke dalam objek SubAspect agar bisa dibaca oleh Pydantic (schemas)
+    for aspect in aspects:
+        for sub in aspect.sub_aspects:
+            setattr(sub, 'tests', tests_by_sub_aspect.get(sub.id, []))
+            
+    return aspects
 
 def create_aspect(db: Session, aspect: schemas.AspectCreate, template_id: int):
     db_aspect = models.Aspect(
