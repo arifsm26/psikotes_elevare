@@ -946,6 +946,18 @@ def create_new_master_sub_aspect(
         raise HTTPException(status_code=400, detail="Nama master sub-aspek sudah ada.")
     return crud.create_master_sub_aspect(db, sub_aspect)
 
+@router.put("/master-sub-aspects/{sub_aspect_id}", response_model=schemas.SubAspect, tags=["Admin - Psychogram"])
+def update_existing_master_sub_aspect(
+    sub_aspect_id: int,
+    sub_aspect: schemas.SubAspectCreateMaster,
+    db: Session = Depends(get_db),
+    current_admin: models.AdminUser = Depends(get_current_active_admin_user)
+):
+    updated = crud.update_master_sub_aspect(db, sub_aspect_id=sub_aspect_id, sub_aspect=sub_aspect)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Master Sub-Aspek tidak ditemukan")
+    return updated
+
 @router.post("/aspects/{aspect_id}/sub-aspects/{sub_aspect_id}", response_model=schemas.Aspect, tags=["Admin - Psychogram"])
 def add_sub_aspect_to_aspect(
     aspect_id: int, 

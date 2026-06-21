@@ -1422,6 +1422,19 @@ def create_master_sub_aspect(db: Session, sub_aspect: schemas.SubAspectCreateMas
     db.refresh(db_sub_aspect)
     return db_sub_aspect
 
+def update_master_sub_aspect(db: Session, sub_aspect_id: int, sub_aspect: schemas.SubAspectCreateMaster):
+    db_sub_aspect = db.query(models.SubAspect).filter(models.SubAspect.id == sub_aspect_id).first()
+    if not db_sub_aspect:
+        return None
+    db_sub_aspect.name = sub_aspect.name
+    db_sub_aspect.minimum_category = sub_aspect.minimum_category
+    db_sub_aspect.description = sub_aspect.description
+    db_sub_aspect.low_score_description = sub_aspect.low_score_description
+    db_sub_aspect.high_score_description = sub_aspect.high_score_description
+    db.commit()
+    db.refresh(db_sub_aspect)
+    return db_sub_aspect
+
 # Fungsi untuk asosiasi
 def associate_sub_aspect_to_aspect(db: Session, aspect_id: int, sub_aspect_id: int):
     aspect = db.query(models.Aspect).filter(models.Aspect.id == aspect_id).first()
