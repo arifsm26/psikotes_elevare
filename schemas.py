@@ -31,8 +31,10 @@ class Test(BaseModel):
 class SubAspect(BaseModel):
     id: int
     name: str
-    # order: int # <-- HAPUS BARIS INI
     minimum_category: str
+    description: Optional[str] = None
+    low_score_description: Optional[str] = None
+    high_score_description: Optional[str] = None
     tests: List[Test] = []
     
     class Config:

@@ -353,6 +353,9 @@ class SubAspect(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False, unique=True)
     minimum_category = Column(String(10), nullable=False, server_default='B')
+    description = Column(Text, nullable=True)
+    low_score_description = Column(Text, nullable=True)
+    high_score_description = Column(Text, nullable=True)
     
     aspects = relationship(
         "Aspect",
