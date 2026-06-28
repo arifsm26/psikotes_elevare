@@ -558,25 +558,22 @@ def update_question(db: Session, question_id: int, question_data: schemas.Questi
         setattr(db_question, key, value)
 
     # Sinkronisasi opsi jawaban
-    if question_data.question_type == 'multiple_choice':
-        existing_options = {opt.id: opt for opt in db_question.options}
-        incoming_ids = {opt.id for opt in question_data.options if opt.id is not None}
+    existing_options = {opt.id: opt for opt in db_question.options}
+    incoming_ids = {opt.id for opt in question_data.options if opt.id is not None}
 
-        # Hapus opsi yang tidak ada di input
-        for opt_id in existing_options:
-            if opt_id not in incoming_ids:
-                db.delete(existing_options[opt_id])
+    # Hapus opsi yang tidak ada di input
+    for opt_id in existing_options:
+        if opt_id not in incoming_ids:
+            db.delete(existing_options[opt_id])
 
-        # Tambahkan/Update opsi baru
-        for option_in in question_data.options:
-            option_dict = option_in.dict()
-            if option_in.id is not None:
-                db.query(models.AnswerOption).filter(models.AnswerOption.id == option_in.id).update(option_dict)
-            else:
-                new_option = models.AnswerOption(question_id=question_id, **option_dict)
-                db.add(new_option)
-    else:  # Essay: hapus semua opsi
-        db.query(models.AnswerOption).filter(models.AnswerOption.question_id == question_id).delete()
+    # Tambahkan/Update opsi baru
+    for option_in in question_data.options:
+        option_dict = option_in.dict()
+        if option_in.id is not None:
+            db.query(models.AnswerOption).filter(models.AnswerOption.id == option_in.id).update(option_dict)
+        else:
+            new_option = models.AnswerOption(question_id=question_id, **option_dict)
+            db.add(new_option)
 
     db.commit()
     db.refresh(db_question)
