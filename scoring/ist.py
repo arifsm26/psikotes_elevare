@@ -78,12 +78,38 @@ class ISTScorer(BaseScorer):
         rw_scores = {'SE': 0, 'WA': 0, 'AN': 0, 'GE': 0, 'ME': 0, 'RA': 0, 'ZR': 0, 'FA': 0, 'WU': 0}
         total_correct = 0
 
+        # Kumpulkan jawaban berdasarkan question_id
+        answers_by_q = {}
         for ans in participant_answers:
-            if ans.question and ans.selected_option and ans.selected_option.is_correct:
-                subtest = cls._get_subtest(ans.question.order)
-                if subtest:
+            if not ans.question: continue
+            qid = ans.question.id
+            if qid not in answers_by_q:
+                answers_by_q[qid] = {'question': ans.question, 'selected_options': []}
+            if ans.selected_option:
+                answers_by_q[qid]['selected_options'].append(ans.selected_option)
+
+        for qid, qdata in answers_by_q.items():
+            question = qdata['question']
+            selected_opts = qdata['selected_options']
+            subtest = cls._get_subtest(question.order)
+            
+            if not subtest:
+                continue
+
+            if question.question_type == 'multiple_answer':
+                correct_options_count = sum(1 for opt in question.options if opt.score > 0)
+                selected_correct = sum(1 for opt in selected_opts if opt.score > 0)
+                selected_wrong = sum(1 for opt in selected_opts if opt.score <= 0)
+                
+                # Syarat mendapat nilai 1: pilih semua opsi yang benar, dan tidak ada yang salah
+                if correct_options_count > 0 and selected_correct == correct_options_count and selected_wrong == 0:
                     rw_scores[subtest] += 1
-                total_correct += 1
+                    total_correct += 1
+            else:
+                # Untuk soal biasa (multiple_choice, dll)
+                if selected_opts and (selected_opts[0].score > 0 or selected_opts[0].is_correct):
+                    rw_scores[subtest] += 1
+                    total_correct += 1
 
         # 3. Konversi RW ke SW
         sw_scores = {}

@@ -201,7 +201,7 @@ def save_participant_answers(db: Session, participant_id: int, submission: schem
         question_ids = [a.question_id for a in submission.answers]
         saved_answers = db.query(models.ParticipantAnswer).options(
             joinedload(models.ParticipantAnswer.selected_option),
-            joinedload(models.ParticipantAnswer.question)
+            joinedload(models.ParticipantAnswer.question).joinedload(models.Question.options)
         ).filter(
             models.ParticipantAnswer.participant_id == participant_id,
             models.ParticipantAnswer.question_id.in_(question_ids)
